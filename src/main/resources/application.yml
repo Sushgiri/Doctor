@@ -2,23 +2,11 @@ spring:
   application:
     name: DOCTOR-SERVICE
   spring:
-
-
-#
-#  data:
-#    mongodb:
-#      uri: mongodb://localhost:27017/yourDatabase
-
-
-
-
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/PractoUser
   profiles:
     active: dev
-
-
-    # Other properties related to MongoDB can be added here
-
-
 
 server:
   port: 8081

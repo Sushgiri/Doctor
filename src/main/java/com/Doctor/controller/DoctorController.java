@@ -6,12 +6,17 @@ import com.Doctor.entity.Doctor;
 import com.Doctor.entity.Reviews;
 import com.Doctor.payload.*;
 import com.Doctor.payload.Docterdeletedto;
+import com.Doctor.security.JwtTokenProvider;
 import com.Doctor.service.Doctorservice;
 
 import net.bytebuddy.asm.Advice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,17 +34,24 @@ public class DoctorController {
 
     @Autowired
     private Doctorservice doctorservice;
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
-    @PostMapping
-    public ResponseEntity<?> CreateDoctorId(@RequestBody @Valid  Doctor doctor){
-//   try {
-//       if (bindingResult.hasErrors()) {
-//           return new ResponseEntity<>(bindingResult.getFieldError().getDefaultMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-//       }
-       String createdoctoraccount = doctorservice.createdoctoraccount(doctor);
-       return new ResponseEntity<>(createdoctoraccount, HttpStatus.CREATED);
+    @Autowired
+    private JwtTokenProvider tokenProvider;
 
-   }
+    @PostMapping("/signup")
+    public ResponseEntity<?> registerUser(@Valid @RequestBody Doctor doctor, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return new ResponseEntity<>(bindingResult.getFieldError().getDefaultMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        if(doctor == null){
+            return  new
+                    ResponseEntity<>("Please Enter Your Details to register an account",HttpStatus.OK);
+        }
+        doctorservice.signup(doctor);
+        return new ResponseEntity<>("User Registered Successfully",HttpStatus.OK);
+    }
    @DeleteMapping("delete/{DoctorId}")
    public ResponseEntity<?> deletedoctoraccount(@PathVariable String DoctorId ,@RequestBody Logindto dto){
         doctorservice.deletedoctoraccount(DoctorId,dto);
@@ -81,28 +93,39 @@ public class DoctorController {
 //        return new ResponseEntity<>("User signed-in successfully!.",
 //                HttpStatus.OK);
 //    }
-
+  //http://localhost:8081/doctor/api/passwordreset
     @PostMapping("/login")
     public ResponseEntity<?> logindoctoraccount(@RequestBody Logindto logindto){
+        Authentication authentication = authenticationManager.authenticate(new
+                UsernamePasswordAuthenticationToken(
+                logindto.getUsernameOremail(), logindto.getPassword()));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
         homeview logindoctoraccount =doctorservice.logindoctoraccount(logindto);
-        return new ResponseEntity<>(logindoctoraccount,HttpStatus.OK);
+        String token = tokenProvider.generateToken(authentication);
+        return new ResponseEntity<>(logindoctoraccount +"\n"+"JWT TOKEN :  "+token,HttpStatus.OK);
     }
-
+    @PutMapping("/passwordreset/{DoctorId}")
+    public  ResponseEntity<?> resetpassword(@PathVariable String DoctorId,@RequestBody Logindto logindto){
+        String resetpassword = doctorservice.resetpassword(DoctorId,logindto);
+        return new ResponseEntity<>(resetpassword,HttpStatus.OK);
+    }
     @GetMapping("/all")
     public ResponseEntity<?> getalldoctos(){
         Set<Doctordto> getalldoctors = doctorservice.getalldoctors();
         return new ResponseEntity<>(getalldoctors,HttpStatus.OK);
     }
-
     @PostMapping("/review")
     public ResponseEntity<?> review(@RequestBody Reviews reviews){
         doctorservice.savereview(reviews);
         return new ResponseEntity<>("", HttpStatus.OK);
     }
-
-
-
-
-
-
+    @GetMapping("/logout")
+    public ResponseEntity<String> logoutaccount() {
+        Authentication authentiaction = SecurityContextHolder.getContext().getAuthentication();
+        if (authentiaction != null) {
+            //Account will logged out and JWT Token is Expired
+            SecurityContextHolder.getContext().setAuthentication(null);
+        }
+        return new ResponseEntity<>("Logged Out Successfully", HttpStatus.OK);
+    }
 }

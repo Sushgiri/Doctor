@@ -10,9 +10,7 @@ import org.aspectj.weaver.reflect.ReflectionVar;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.util.List;
@@ -24,14 +22,13 @@ import java.util.Set;
 @Document(collection = "Doctors")
 
 public class Doctor {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-       private  String id;
+@Id
+private  String id;
     @Field("DoctorId")
     private String  doctorId;
     @Field("Doctor")
     @NotBlank(message = "Name Cant be Empty")
-    private String doctorName;
+    private String username;
 
     @Field("phone")
     @NotBlank(message = "Phone cant be Empty")

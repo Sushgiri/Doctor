@@ -13,12 +13,11 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class AvailableSlots {
-
-    private String DoctorId;
+  private  String doctorId;
+   private String book;
     private String date;
     private boolean morningSlot;
     private boolean afternoonSlots;
     private boolean eveningSlots;
-
 
 }

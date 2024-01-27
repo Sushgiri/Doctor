@@ -7,14 +7,12 @@ import com.Doctor.exception.DataAlreadyExists;
 import com.Doctor.exception.ResourceNotFoundExcecption;
 import com.Doctor.payload.Doctordto;
 import com.Doctor.payload.Logindto;
-import com.Doctor.payload.Review;
 import com.Doctor.payload.homeview;
 import com.Doctor.repository.DoctorRepository;
 
 
 import com.Doctor.repository.ReviewRepository;
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
@@ -43,13 +41,14 @@ public class Doctorservice {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+
     @Autowired
     private ResttemplateConfig resttemplate;
     private final ModelMapper modelMapper;
 
     private static final ModelMapper modelMapper1 = new ModelMapper();
 
-    public String createdoctoraccount(Doctor doctor) {
+    public String signup(Doctor doctor) {
         //  Doctor doctor = MaptoDoctor(doctordto);
         if (doctorRepository.existsByEmail(doctor.getEmail())) {
             throw new DataAlreadyExists("Email Already Registered with an existing acccount");
@@ -65,35 +64,33 @@ public class Doctorservice {
             doctor.setPassword(passwordEncoder.encode(doctor.getPassword()));
             doctor.setDoctorId(createddoctorid);
             doctor.setAvailableSlots(doctor.getAvailableSlots());
+
             doctorRepository.save(doctor);
         } catch (Exception e) {
             throw new RuntimeException("Something went wrong ,Account Creation Failed");
-
         }
         return "DoctorAccount Created Successfully";
     }
-
     public String deletedoctoraccount(String DoctorId,Logindto dto) {
-        Doctor doctor1 = doctorRepository.findByEmail(dto.getEmail());
+        Doctor doctor1 = doctorRepository.findByUsernameOrEmail(dto.getUsernameOremail(),dto.getUsernameOremail()).get();
         boolean isPasswordMatch = passwordEncoder.matches(dto.getPassword(), doctor1.getPassword());
         if (isPasswordMatch) {
-            doctorRepository.deleteById(doctor1.getId());
+            doctorRepository.deleteById(doctor1.getDoctorId());
             return "Account is deleted";
         } else {
             throw new ResourceNotFoundExcecption("Invalid password Entered,Enter valid password");
         }
     }
-
-    public homeview logindoctoraccount(Logindto logindto) {
-        Doctor doctor1 = doctorRepository.findByEmail(logindto.getEmail());
+    public homeview  logindoctoraccount(Logindto logindto) {
+        Doctor doctor1 = doctorRepository.findByUsername(logindto.getUsernameOremail());
         if(doctor1 == null){
-            throw new ResourceNotFoundExcecption("There is No account with email"+logindto.getEmail());
-        }
-        if (doctor1 != null && logindto.getEmail().equals(doctor1.getEmail()) && passwordEncoder.matches(logindto.getPassword(), doctor1.getPassword())) {
-            homeview homeview = new homeview();
-            homeview returnhome = new homeview();
+            throw new ResourceNotFoundExcecption("There is No account with UsernameOrEmail"+logindto.getUsernameOremail());
+        } homeview homeview = new homeview();
+        homeview returnhome = new homeview();
+        if (doctor1 != null && logindto.getUsernameOremail().equals(doctor1.getEmail())  || logindto.getUsernameOremail().equals(doctor1.getUsername()) && passwordEncoder.matches(logindto.getPassword(), doctor1.getPassword())) {
+
             returnhome.setDoctorId("UNIQUE ID                :     "+doctor1.getDoctorId());
-            returnhome.setName("NAME                         :     "+doctor1.getDoctorName());
+            returnhome.setName("NAME                         :     "+doctor1.getUsername());
             returnhome.setCreateSlot("CREATE AVALIABLE SLOTS :     "+homeview.getCreateSlot()+doctor1.getDoctorId()+"/yyyy-mm-dd");
             returnhome.setDeleteacount("DELETE ACCOUNT       :     "+homeview.getDeleteacount()+doctor1.getDoctorId());
             returnhome.setViewAvailableSlots("AVIALABLE SLOTS:     "+homeview.getViewAvailableSlots()+doctor1.getDoctorId());
@@ -102,19 +99,21 @@ public class Doctorservice {
             returnhome.setUpdateSLot("UPDATE SOLT            :     "+homeview.getUpdateSLot()+doctor1.getDoctorId()+"/yyyy-mm-dd");
             returnhome.setDeleteacount("DELETE ACCOUNT       :     "+homeview.getDeleteacount()+doctor1.getDoctorId());
             returnhome.setProfileDetails("PROFILE DETAILS    :     "+homeview.getProfileDetails()+doctor1.getDoctorId());
+            returnhome.setApppointmentlist("APPOINTMENTLIST   :    "+ homeview.getApppointmentlist()+doctor1.getDoctorId());
+            returnhome.setReadAllreviews("READ REVIEWS        :     "+homeview.getReadAllreviews()+doctor1.getDoctorId());
+            returnhome.setLogout("LOGOUT                       :    "+homeview.getLogout());
             return returnhome;
+        }  if (doctor1 != null && passwordEncoder.matches(logindto.getPassword(), doctor1.getPassword())==false) {
+                      throw new ResourceNotFoundExcecption("YOU HAVE ENTERED WRONG PASSWORD  ,IF YOU HAVE  FORGOTTEN YOUR PASSWORD ,`YOU CAN RESET PASSWORD HERE "+ "http://lcoalhost:8081/doctor/api/passwordreset/"+doctor1.getDoctorId());
         } else {
             throw new ResourceNotFoundExcecption("Invalid Credentials. Check entered email and password again");
         }
     }
     public Set<Doctordto> getalldoctors() {
-
         List<Doctor> all = doctorRepository.findAll();
-
 //        List<Doctordto> fetcheddoctor = all.stream()
-//                .map(doctor -> mapDoctorToDto(doctor)) // Replace with your actual method
+//                .map(doctor -> mapDoctorToDto(doctor))
 //                .collect(Collectors.toList());
-
         double totalrating = 0;
         int count = 0;
         for ( Doctor doctor1 : all) {
@@ -129,9 +128,8 @@ public class Doctorservice {
                       }
             }
         }
-
         List<Doctordto> fetcheddoctor = all.stream()
-                .map(doctor -> mapDoctorToDto(doctor)) // Replace with your actual method
+                .map(doctor -> mapDoctorToDto(doctor))
                 .collect(Collectors.toList());
         Set<Doctordto> returndto =new HashSet<>(fetcheddoctor);
 
@@ -148,7 +146,6 @@ public class Doctorservice {
 //        return returndto;
         return returndto;
     }
-
     public static Doctordto mapDoctorToDto(Doctor doctor) {
         return modelMapper1.map(doctor, Doctordto.class);
     }
@@ -175,5 +172,32 @@ public class Doctorservice {
         reviews.setDatetime(todaydatetime.toString());
         Reviews save = reviewRepository.save(reviews);
 
+    }
+
+    public String  resetpassword(String doctorId,Logindto logindto) {
+        Doctor byDoctorId = doctorRepository.findByDoctorId(doctorId);
+          Doctor doctor = new Doctor();
+          doctor.setId(byDoctorId.getId());
+          doctor.setUsername(byDoctorId.getUsername());
+          doctor.setPhone(byDoctorId.getPhone());
+          doctor.setLocation(byDoctorId.getLocation());
+          doctor.setRating(byDoctorId.getRating());
+          doctor.setExperience(byDoctorId.getExperience());
+          doctor.setSignupdate(byDoctorId.getSignupdate());
+          doctor.setPassword(passwordEncoder.encode(logindto.getPassword()));
+          doctor.setQualification(byDoctorId.getQualification());
+          doctor.setLocation(byDoctorId.getLocation());
+          doctor.setEmail(byDoctorId.getEmail());
+          doctor.setDoctorId(byDoctorId.getDoctorId());
+          doctor.setFees(byDoctorId.getFees());
+          doctor.setBookingCharge(byDoctorId.getBookingCharge());
+          doctor.setSpecialization(byDoctorId.getSpecialization());
+          doctor.setAvailableSlots(byDoctorId.getAvailableSlots());
+          doctor.setBookingCharge(byDoctorId.getBookingCharge());
+        Doctor save = doctorRepository.save(doctor);
+        if(passwordEncoder.matches(logindto.getPassword(),save.getPassword())){
+            return " Password is updated successfullly";
+        }
+        return "Something went wrong ,password not updated ";
     }
 }

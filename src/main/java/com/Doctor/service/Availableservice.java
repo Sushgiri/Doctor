@@ -1,5 +1,6 @@
 package com.Doctor.service;
 
+import com.Doctor.config.ResttemplateConfig;
 import com.Doctor.payload.AvailableSlots;
 import com.Doctor.entity.Doctor;
 import com.Doctor.exception.ResourceNotFoundExcecption;
@@ -17,6 +18,8 @@ public class Availableservice {
 
     @Autowired
     private DoctorRepository doctorRepository;
+    @Autowired
+    private ResttemplateConfig resttemplateConfig;
 
 
     public String creatavailableslots(String DoctorId, AvailableSlots availableSlots) {
@@ -39,7 +42,7 @@ public class Availableservice {
                 if (sizeafterinsertion == sizebeforeinsertion) {
                     return "slots are already Inserted for this date ,you can update records here" + "http://lcoalhost:8081/doctor/available/api//" + byDoctorId.getDoctorId() + "/" + availableSlots.getDate();
                 } else {
-                    return " Available Slots for " + byDoctorId.getDoctorName() + " inserted for Date " + availableSlots.getDate();
+                    return " Available Slots for " + byDoctorId.getUsername() + " inserted for Date " + availableSlots.getDate();
                 }
             } else {
                 return "Slots are Inserted for Four days ,you can't insert data of more than  Four days";
@@ -93,7 +96,18 @@ public class Availableservice {
     }
  public Set<AvailableSlots>  getslotsbyid(String DoctorId){
      Doctor byDoctorId = doctorRepository.findByDoctorId(DoctorId);
-     Set<AvailableSlots> fetchedslots = byDoctorId.getAvailableSlots();
-     return fetchedslots;
+     Set<AvailableSlots> fetchedSlots = byDoctorId.getAvailableSlots();
+     Date date = new Date();
+     String todaydate= date.toString();
+     for(AvailableSlots slots:fetchedSlots){
+         if(slots.getDate() ==todaydate){
+             AvailableSlots[] forObject = resttemplateConfig.getRestTemplate().getForObject("http://localhost:8081/doctor/available/api/" + DoctorId + "/" + slots.getDate(), AvailableSlots[].class);
+            for(AvailableSlots app:forObject){
+                fetchedSlots.add(app);
+            }
+         }
+     }
+     Set<AvailableSlots>returnedslots = new HashSet<>(fetchedSlots);
+     return returnedslots;
  }
 }
